@@ -1,4 +1,5 @@
 # Portal inspired sentry turret
+![Title](./Title.jpg)  
 The Portal inspired sentry turret project is a pair of AEGs with a camera module that can be remote-controlled by a touch panel. This repository provides the firmware source code and the hardware schematic of the project. 
 
 # Features demostration
