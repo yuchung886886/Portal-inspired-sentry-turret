@@ -1,0 +1,111 @@
+menu "Application Configuration"
+
+    choice ESPNOW_WIFI_MODE
+        prompt "WiFi mode"
+        default ESPNOW_WIFI_MODE_STATION
+        help
+            WiFi mode(station or softap).
+
+        config ESPNOW_WIFI_MODE_STATION
+            bool "Station"
+        config ESPNOW_WIFI_MODE_STATION_SOFTAP
+            bool "Softap"
+    endchoice
+
+    config ESPNOW_PMK
+        string "ESPNOW primary master key"
+        default "pmk1234567890123"
+        help
+            ESPNOW primary master for the example to use. The length of ESPNOW primary master must be 16 bytes.
+
+    config ESPNOW_LMK
+        string "ESPNOW local master key"
+        default "lmk1234567890123"
+        help
+            ESPNOW local master for the example to use. The length of ESPNOW local master must be 16 bytes.
+
+    config ESPNOW_CHANNEL
+        int "ESPNOW Channel"
+        default 1
+        range 0 14
+        help
+            The channel on which sending and receiving ESPNOW data.
+			
+    config ESPNOW_ENABLE_LONG_RANGE
+        bool "ESPNOW Enable Long Range"
+        default "n"
+        help
+            When enable long range, the PHY rate of ESP32 will be 512Kbps or 256Kbps
+
+    config PCF8574_SLAVE_ADDR
+        hex "PCF8574 I2C slave address(hex)"
+        default "0x20"
+        help
+            I2C slave address of the IO expansion board
+
+    config AIRSOFT_BATTERY_VOLTAGE
+        int "Airsoft battery voltage(mV)"
+        default "8400"
+        help
+            Output voltage of airsoft battery in mV
+			
+    config AEG_MOTOR_EFFECTIVE_VOLTAGE
+        int "AEG motor effective input voltage(mV)"
+        default "3000"
+        help
+            Effective input voltage of AEG Motor in mV
+
+    config MOTOR_PAN_RESET_STEPS
+        int "Pan motor reset steps"
+        default "410"
+        help
+            The amount of (1.8 / 2°) micro steps of the stepper motor to pan the turret for 60°
+			
+    config MOTOR_TILT_RESET_STEPS
+        int "Tilt motor reset steps"
+        default "165"
+        help
+            The amount of (1.8° / 4) micro steps of the stepper motor to tilt the turret for 15°
+			
+    config MOTOR_TELESCOPE_ARM_RETRACT_STEPS
+        int "Telescope arm motor retract steps"
+        default "175"
+        help
+            The amount of (1.8° / 2) micro steps to retract the telescope arms for 41.5mm.
+			
+    config AF_MOTOR_EFFECTIVE_VOLTAGE
+        int "Ammo feeding motor effective input voltage(mV)"
+        default "840"
+        help
+            Effective input voltage of TT Motor of ammo feeder in mV.
+
+    config LEFT_AEG_HORIZ_OFFSET
+        int "Left AEG horizontal offset(cm)"
+        default "-10"
+        help
+            The horizontal distance between the FOV center and the laser dot emitted by the left AEG.
+			
+    config RIGHT_AEG_HORIZ_OFFSET
+        int "Right AEG horizontal offset(cm)"
+        default "13"
+        help
+            The horizontal distance between the FOV center and the laser dot emitted by the right AEG.
+			
+    config LEFT_AEG_VERT_OFFSET
+        int "Left AEG vertical offset(cm)"
+        default "0"
+        help
+            The vertical distance between the FOV center and the laser dot emitted by the left AEG.	
+			
+    config RIGHT_AEG_VERT_OFFSET
+        int "Right AEG vertical offset(cm)"
+        default "-1"
+        help
+            The vertical distance between the FOV center and the laser dot emitted by the right AEG.
+
+    config AIMING_SIGHT_CALIBRATION_DISTANCE
+        int "Aiming sight calibration distance(cm)"
+        default "170"
+        help
+            The proximity distance detected by the ultrasonic range finder at aiming sight calibration.			
+endmenu
