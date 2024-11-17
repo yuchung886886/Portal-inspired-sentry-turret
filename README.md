@@ -3,6 +3,7 @@
 This repository provides the firmware source code and the hardware schematic of the Portal inspired sentry turret project. 
 
 # Features demostration
+[![Demo](./Demo.jpg)](https://youtu.be/QgqkCPKWOdw)
 - This project consists of two objects, the Turret and the Controller, which communicate with each other wirelessly.  
 - The turret equips two AEG airsofts teared down from the UHC mini AEG series airsoft and two laser heads for zeroing.
 - The turret equips a OV5640 camera module to provide a first-person view to navigate the pan/tilt of the turret.
