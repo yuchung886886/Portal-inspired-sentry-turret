@@ -14,13 +14,17 @@ This repository provides the firmware source code and the hardware schematic of 
 - The turret is powered by a 12V power supply and an extra airsoft battery; the controller is powered by four 1.2V AAA batteries.
 
 # Hardware components
-The schematic of the turret and controller are in the hardware/ folder of this repository. All electronic units placed in the schematic are off-the-shelf modules that  can be found and purchased on the web. You can refer to the part numbers of these modules listed in the Chapter 1.
+- The schematic of the turret and controller are in the hardware/ folder of this repository.  
+- All electronic units placed in the schematic are off-the-shelf modules that can be found and purchased on the web. You can refer to the part numbers of these modules listed in [Chapter 01: Components and tools list](https://youtu.be/W_c0IfOHLCk?si=FR4jc9LDSfdtcwQK) of the tutorial.
 
 # Firmware development environment setup
-Two firmware source code packages, the Controller and the Turret, are in the firmware/ folder. These codes are developed based on Espressif ESP32-S3 MCU. ESP-IDF development framework v5.0.1 is required to configure the settings, build the firmware source code, and flash the firmware binary of these source packages. Please refer to the Chapter 2 for the detail tutorial.
+- Two firmware source code packages, the Controller and the Turret, are in the firmware/ folder of this repository.  
+- These codes are developed based on Espressif ESP32-S3 MCU. ESP-IDF development framework v5.0.1 is required to configure the settings, build the firmware source code, and flash the firmware binary of these source packages. Please refer to [Chapter 02: Firmware environment setup](https://youtu.be/tWS4U_Hn11w?si=jFq35Zpg8LeGAPbe) of the tutorial for the detail.  
 
 # Mechanical components
-All the STL files of the 3D printed parts are sold on Cult3D. Besides the 3D printed parts, there are also some off-the-shelf mechanical components used in this project and you can refer to the part names listed in the Chapter 1 to search and purchase these parts on the web.
+- All the STL files of the 3D printed parts will be sold on Cults3D.
+- Besides the 3D printed parts, there are also some off-the-shelf mechanical components used in this project and you can refer to the part names listed in [Chapter 01: Components and tools list](https://youtu.be/W_c0IfOHLCk?si=FR4jc9LDSfdtcwQK) to search and purchase these parts on the web.
 
 # Tutorial
-Please refer to the rest of tutorials in the playlist for the assembly guide of this project.
+Please refer to the link of the YouTube playlist of the complete assembly guide for this project.
+[![Tutorial](./Tutorial.jpg)](https://www.youtube.com/playlist?list=PLm8tr3bbToy2q0l4HYQqZTnQtdyZf5T8J)
