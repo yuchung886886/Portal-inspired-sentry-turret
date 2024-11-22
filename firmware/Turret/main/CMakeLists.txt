@@ -22,6 +22,7 @@ set(COMPONENT_EMBED_FILES
 	sound/turret_target_acquired.pcm 
 	sound/turret_retract.pcm
 	sound/turret_goodnight.pcm
-	sound/turret_are_you_still_there.pcm)	
+	sound/turret_are_you_still_there.pcm
+	sound/turret_opera_singing.pcm)	
 
 register_component()

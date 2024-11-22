@@ -3,6 +3,7 @@
 
 typedef enum {
     PLAY_MUSIC,
+	STOP_MUSIC,
 } speaker_ctrl_event_id_t;
 
 typedef struct {
@@ -24,6 +25,8 @@ esp_err_t speaker_ctrl_task_init(void);
 #define SOUND_TRACK__RETRACT				6
 #define SOUND_TRACK__GOODNIGHT				7
 #define SOUND_TRACK__ARE_YOU_STILL_THERE	8
+#define SOUND_TRACK__OPERA_SINGING			9
 esp_err_t speaker_ctrl__play_music(uint8_t track_index);
+esp_err_t speaker_ctrl__stop_music();
 
 #endif

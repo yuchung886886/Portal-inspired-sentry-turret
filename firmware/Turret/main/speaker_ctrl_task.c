@@ -40,6 +40,8 @@ extern const uint8_t turret_goodnight_pcm_start[]		asm("_binary_turret_goodnight
 extern const uint8_t turret_goodnight_pcm_end[]			asm("_binary_turret_goodnight_pcm_end");
 extern const uint8_t turret_still_there_pcm_start[]		asm("_binary_turret_are_you_still_there_pcm_start");
 extern const uint8_t turret_still_there_pcm_end[]		asm("_binary_turret_are_you_still_there_pcm_end");
+extern const uint8_t turret_opera_singing_pcm_start[]	asm("_binary_turret_opera_singing_pcm_start");
+extern const uint8_t turret_opera_singing_pcm_end[]		asm("_binary_turret_opera_singing_pcm_end");
 
 typedef struct {
     const uint8_t* start;
@@ -54,7 +56,8 @@ sound_track_t sound_tracks_list[] = {
 	[SOUND_TRACK__MALFUNCTION] = {.start = turret_malfunction_start, .end = turret_malfunction_end},
 	[SOUND_TRACK__RETRACT] = {.start = turret_retract_pcm_start, .end = turret_retract_pcm_end},
 	[SOUND_TRACK__GOODNIGHT] = {.start = turret_goodnight_pcm_start, .end = turret_goodnight_pcm_end},
-	[SOUND_TRACK__ARE_YOU_STILL_THERE] = {.start = turret_still_there_pcm_start, .end = turret_still_there_pcm_end}
+	[SOUND_TRACK__ARE_YOU_STILL_THERE] = {.start = turret_still_there_pcm_start, .end = turret_still_there_pcm_end},
+	[SOUND_TRACK__OPERA_SINGING] = {.start = turret_opera_singing_pcm_start, .end = turret_opera_singing_pcm_end}
 };
 
 static const char *TAG = "speaker_ctrl";
@@ -119,6 +122,18 @@ esp_err_t speaker_ctrl__play_music(uint8_t track_index){
 		}		          
 	}	
 	return ESP_OK;
+}
+
+esp_err_t speaker_ctrl__stop_music(){
+	speaker_ctrl_event_t sc_evt;
+	
+	if(speaker_ctrl_status & SPEAKER_CTRL_STATUS__BUSY){	
+		i2s_channel_disable(i2s_tx_handle);
+		i2s_channel_enable(i2s_tx_handle);
+		speaker_ctrl_status	&= ~SPEAKER_CTRL_STATUS__BUSY;	
+	}
+	
+	return ESP_OK;	
 }
 
 static void speaker_ctrl_task(void *pvParameter){

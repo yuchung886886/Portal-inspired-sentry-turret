@@ -18,7 +18,7 @@
 
 static const char *TAG = "remote_ctrl";
 
-#define REMOTE_CTRL_CONNECT_TIMEOUT		10000
+#define REMOTE_CTRL_CONNECT_TIMEOUT		5000
 #define REMOTE_CTRL_QUEUE_OP_TIMEOUT	1000
 QueueHandle_t remote_ctrl_event_queue;
 
@@ -364,7 +364,8 @@ static void remote_ctrl_task(void *pvParameter)
 										}				
 
 										if(remote_ctrl_state == REMOTE_CTRL_STATE__PAIRING){
-											if(!(orientation_ctrl_status & ORI_CTRL_STATUS__TIMEOUT_RETRACT_EN)){
+											if(!(orientation_ctrl_status & ORI_CTRL_STATUS__TIMEOUT_RETRACT_EN) &&
+											   !(orientation_ctrl_status & ORI_CTRL_STATUS__TIMEOUT_SINGING_EN)){
 												speaker_ctrl__play_music(SOUND_TRACK__HELLO);
 											}else{
 												// Orientation ctrl task will play "Hello" track after extend the telescope arms. 
@@ -390,17 +391,17 @@ static void remote_ctrl_task(void *pvParameter)
 			}			
 		}else{
 			ESP_LOGW(TAG, "When %s, QReceive timeout %d", remote_ctrl_state_str[remote_ctrl_state], connection_timeout_count);
-			if(connection_timeout_count <= ORIENTATION_CTRL__TIMEOUT_TO_RETRACT){connection_timeout_count++;}
+			if(connection_timeout_count <= ORIENTATION_CTRL__TIMEOUT_TO_SING){connection_timeout_count++;}
 			switch(remote_ctrl_state){
 				case REMOTE_CTRL_STATE__BROADCAST:	
 					if(connection_timeout_count == 3){
 						speaker_ctrl__play_music(SOUND_TRACK__ANYONE_THERE);
-					}else if(connection_timeout_count == ORIENTATION_CTRL__TIMEOUT_TO_RETRACT){
-						oc_evt.id = ENABLE_TIMEOUT_RETRACT;
+					}else if(connection_timeout_count == ORIENTATION_CTRL__TIMEOUT_TO_SING){												
+						oc_evt.id = ENABLE_TIMEOUT_SINGING;
 						oc_evt.info = NULL;
 						if(xQueueSend(orientation_ctrl_event_queue, &oc_evt, 0) != pdTRUE){
-							ESP_LOGW(TAG, "Push ENABLE_TIMEOUT_RETRACT to orientation_ctrl_event_queue fail");
-						}						
+							ESP_LOGW(TAG, "Push ENABLE_TIMEOUT_SINGING to orientation_ctrl_event_queue fail");
+						}									
 					}else{
 						// Resent ESPNOW data if no RECV_CB event
 						if (esp_now_send(send_param->dest_mac, send_param->buffer, send_param->len) != ESP_OK) {
