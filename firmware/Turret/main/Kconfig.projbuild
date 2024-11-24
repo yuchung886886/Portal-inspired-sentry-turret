@@ -67,11 +67,11 @@ menu "Application Configuration"
         help
             The amount of (1.8° / 4) micro steps of the stepper motor to tilt the turret for 15°
 			
-    config MOTOR_TELESCOPE_ARM_RETRACT_STEPS
-        int "Telescope arm motor retract steps"
+    config MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS
+        int "Telescopic arms motor retract steps"
         default "175"
         help
-            The amount of (1.8° / 2) micro steps to retract the telescope arms for 41.5mm.
+            The amount of (1.8° / 2) micro steps to retract the telescopic arms for 41.5mm.
 			
     config AF_MOTOR_EFFECTIVE_VOLTAGE
         int "Ammo feeding motor effective input voltage(mV)"

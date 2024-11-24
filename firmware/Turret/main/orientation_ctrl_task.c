@@ -48,9 +48,13 @@ uint16_t orientation_ctrl_status = ORI_CTRL_STATUS__PAN_LEFT_ENDSTOP_ALARM_EN |
 
 #define MOTOR_TILT_RESET_ANGLE_IN_DEGREE		15
 #define MOTOR_PAN_RESET_ANGLE_IN_DEGREE			60
-int16_t motor_telescope_steps_remain = 0, motor_telescope_distance_in_steps = 0;
+int16_t motor_telescopic_arms_steps_remain = 0, motor_telescope_distance_in_steps = 0;
 int16_t motor_tilt_steps_remain = 0, motor_tilt_angle_in_steps = CONFIG_MOTOR_TILT_RESET_STEPS * 2;
 int16_t motor_pan_steps_remain = 0, motor_pan_angle_in_steps = CONFIG_MOTOR_PAN_RESET_STEPS * 2;
+
+#define MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD	1
+uint8_t motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD;
+uint8_t motor_telescopic_arms_timer = 0;
 
 #define MOTOR_TILT_CONST_HALF_PERIOD	1
 #define MOTOR_TILT_DEC_STEPS_COUNT		32
@@ -83,8 +87,8 @@ QueueHandle_t orientation_ctrl_event_queue;
 static void orientation_ctrl_task(void *pvParameter);
 static esp_err_t pcf8574_set_output_pins(uint8_t pin_mask);
 static esp_err_t pan_tilt_to_reset_angle(void);
-static esp_err_t timout_singing_init(void);
-static esp_err_t pan_at_timout_singing(void);
+static esp_err_t timeout_singing_init(void);
+static esp_err_t pan_at_timeout_singing(void);
 
 esp_err_t orientation_ctrl_init(void){
 	esp_err_t ret = ESP_OK;
@@ -119,14 +123,16 @@ esp_err_t orientation_ctrl_init(void){
 	#define INIT_STATE__TILT_PAN_RESET				2
 	#define INIT_STATE__DONE						3
 	uint8_t initialize_state = INIT_STATE__TELESCOPE_ENDSTOP_SEARCH;	
-	motor_telescope_steps_remain = CONFIG_MOTOR_TELESCOPE_ARM_RETRACT_STEPS * 2;
+	motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS * 2;
+	motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD;
+	motor_telescopic_arms_timer = 0;
 	motor_telescope_distance_in_steps = 0;
 	speaker_ctrl__play_music(SOUND_TRACK__DEPLOY);
 	while(initialize_state != INIT_STATE__DONE){
 		switch(initialize_state){
 			case INIT_STATE__TELESCOPE_ENDSTOP_SEARCH:
 				if(gpio_get_level(MOTOR_TELESCOPE_ENDSTOP_PIN_NUM)){
-					if(motor_telescope_steps_remain == 0){
+					if(motor_telescopic_arms_steps_remain == 0){
 						// TBD, endstop switch not reached.
 					}
 				}else{
@@ -137,7 +143,7 @@ esp_err_t orientation_ctrl_init(void){
 					motor_pan_steps_remain = CONFIG_MOTOR_PAN_RESET_STEPS * 2;
 					motor_pan_half_period = MOTOR_PAN_CONST_HALF_PERIOD;
 					motor_pan_timer = 0;					
-					ESP_LOGD(TAG, "Telescope motor run %d steps", CONFIG_MOTOR_TELESCOPE_ARM_RETRACT_STEPS * 2 - motor_telescope_steps_remain);
+					ESP_LOGD(TAG, "Telescope motor run %d steps", CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS * 2 - motor_telescopic_arms_steps_remain);
 					initialize_state = INIT_STATE__TILT_PAN_ENDSTOP_SEARCH;
 				}
 			break;
@@ -158,7 +164,7 @@ esp_err_t orientation_ctrl_init(void){
 						ESP_LOGE(TAG, "PCF8574 set output fail");
 						return ret;
 					}
-					motor_telescope_steps_remain = 0;
+					motor_telescopic_arms_steps_remain = 0;
 					motor_tilt_steps_remain = CONFIG_MOTOR_TILT_RESET_STEPS;
 					motor_tilt_half_period = MOTOR_TILT_CONST_HALF_PERIOD;
 					motor_tilt_timer = 0;
@@ -210,13 +216,15 @@ static void orientation_ctrl_task(void *pvParameter){
 						orientation_ctrl_status |= ORI_CTRL_STATUS__RETRACT_REQ_PENDING;
 					}else{
 						// Extend the telescopic arms
-						if(!motor_telescope_steps_remain){
+						if(!motor_telescopic_arms_steps_remain){
 							PCF8574_output_status |= MOTOR_TELESCOPE_DIR__CCW;
 							if(pcf8574_set_output_pins(PCF8574_output_status) != ESP_OK){
 								ESP_LOGE(TAG, "PCF8574 set output fail");
 								break;
 							}		
-							motor_telescope_steps_remain = CONFIG_MOTOR_TELESCOPE_ARM_RETRACT_STEPS + 5;
+							motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS + 5;
+							motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD;
+							motor_telescopic_arms_timer = 0;							
 							speaker_ctrl__play_music(SOUND_TRACK__DEPLOY);							
 						}
 					}
@@ -277,8 +285,15 @@ static void orientation_ctrl_task(void *pvParameter){
 					// If the turret is still singing due to wireless connection timeout, stop singing, reset orientation, say Hello.
 						speaker_ctrl__stop_music();
 						orientation_ctrl_status &= ~ORI_CTRL_STATUS__TIMEOUT_SINGING_EN;
-						pan_tilt_to_reset_angle();
-						orientation_ctrl_status |= ORI_CTRL_STATUS__EXTEND_TELESCOPE_ARMS_FROM_TIMEOUT;						
+						oc_evt.id = SWITCH_TELESCOPIC_ARM;
+						oc_evt.info = NULL;
+						if(xQueueSend(orientation_ctrl_event_queue, &oc_evt, 0) != pdTRUE){
+							ESP_LOGW(TAG, "Push SWITCH_TELESCOPIC_ARM to orientation_ctrl_event_queue fail");
+						}else{
+							pan_tilt_to_reset_angle();
+							orientation_ctrl_status |= ORI_CTRL_STATUS__EXTEND_TELESCOPE_ARMS_FROM_TIMEOUT;													
+						}						
+
 					}else if(orientation_ctrl_status & ORI_CTRL_STATUS__TIMEOUT_RETRACT_EN){
 					// If telescopic arms were retracted due to wireless connection timeout, externd arms and say Hello.
 						oc_evt.id = SWITCH_TELESCOPIC_ARM;
@@ -292,7 +307,7 @@ static void orientation_ctrl_task(void *pvParameter){
 					}else{}													
 				break;
 				case ENABLE_TIMEOUT_SINGING:
-					timout_singing_init();
+					timeout_singing_init();
 				break;
 				case ENABLE_TIMEOUT_RETRACT:
 					if(orientation_ctrl_status & ORI_CTRL_STATUS__TELESCOPE_ARMS_EXTENDED){
@@ -322,7 +337,9 @@ static void orientation_ctrl_task(void *pvParameter){
 						vTaskDelay(pdMS_TO_TICKS(2000));
 					}				   				
 					if(orientation_ctrl_status & ORI_CTRL_STATUS__RETRACT_REQ_PENDING){					
-						motor_telescope_steps_remain = CONFIG_MOTOR_TELESCOPE_ARM_RETRACT_STEPS;
+						motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS;
+						motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD;
+						motor_telescopic_arms_timer = 0;
 						speaker_ctrl__play_music(SOUND_TRACK__RETRACT);					
 					}
 					orientation_ctrl_status &= ~ORI_CTRL_STATUS__PAN_TILT_TO_DEFAULT;					
@@ -339,7 +356,7 @@ static void orientation_ctrl_task(void *pvParameter){
 
 		if(orientation_ctrl_status & ORI_CTRL_STATUS__TIMEOUT_SINGING_EN){
 			if(speaker_ctrl_status & SPEAKER_CTRL_STATUS__BUSY){
-				pan_at_timout_singing();
+				pan_at_timeout_singing();
 			}else{
 				pan_tilt_to_reset_angle();
 				orientation_ctrl_status &= ~ORI_CTRL_STATUS__TIMEOUT_SINGING_EN;
@@ -393,23 +410,23 @@ void orientation_ctrl_get_aim_angle(int16_t* pan_angle_x10, int16_t* tilt_angle_
 }
 
 void stepper_motor_steps_ctrl_isr(void){
-	if(!(global_timer_ms_count % 1)){
-		if(motor_telescope_steps_remain > 0){
+	if(motor_telescopic_arms_steps_remain > 0){
+		if(++motor_telescopic_arms_timer == motor_telescopic_arms_half_period){		
 			if((PCF8574_output_status & MOTOR_TELESCOPE_DIR__CCW)){
 				if(gpio_get_level(MOTOR_TELESCOPE_ENDSTOP_PIN_NUM)){
 					if(motors_step_pin_level & MOTOR_TELESCOPE_STEP_PIN__HIGH){
 						motors_step_pin_level &= ~MOTOR_TELESCOPE_STEP_PIN__HIGH;
 					}else{
 						motors_step_pin_level |= MOTOR_TELESCOPE_STEP_PIN__HIGH;
-						motor_telescope_steps_remain--;
+						motor_telescopic_arms_steps_remain--;
 						motor_telescope_distance_in_steps++;
 					}	
 					gpio_set_level(MOTOR_TELESCOPE_STEP_PIN_NUM, (motors_step_pin_level & MOTOR_TELESCOPE_STEP_PIN__HIGH) ? 1 : 0);				
 				}else{
-					ESP_LOGD(TAG, "motor_telescope_steps_remain = %d", motor_telescope_steps_remain);	
+					ESP_LOGD(TAG, "motor_telescopic_arms_steps_remain = %d", motor_telescopic_arms_steps_remain);	
 					orientation_ctrl_status |= ORI_CTRL_STATUS__TELESCOPE_ARMS_EXTENDED;
-					motor_telescope_steps_remain = 0;				
-					motor_telescope_distance_in_steps = CONFIG_MOTOR_TELESCOPE_ARM_RETRACT_STEPS;
+					motor_telescopic_arms_steps_remain = 0;				
+					motor_telescope_distance_in_steps = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS;
 				}			
 			}else{
 				if(motor_telescope_distance_in_steps > 0){
@@ -417,15 +434,16 @@ void stepper_motor_steps_ctrl_isr(void){
 						motors_step_pin_level &= ~MOTOR_TELESCOPE_STEP_PIN__HIGH;
 					}else{
 						motors_step_pin_level |= MOTOR_TELESCOPE_STEP_PIN__HIGH;
-						motor_telescope_steps_remain--;
+						motor_telescopic_arms_steps_remain--;
 						motor_telescope_distance_in_steps--;
 						orientation_ctrl_status &= ~ORI_CTRL_STATUS__TELESCOPE_ARMS_EXTENDED;						
 					}	
 					gpio_set_level(MOTOR_TELESCOPE_STEP_PIN_NUM, (motors_step_pin_level & MOTOR_TELESCOPE_STEP_PIN__HIGH) ? 1 : 0);				
 				}else{
-					motor_telescope_steps_remain = 0;
+					motor_telescopic_arms_steps_remain = 0;
 				}
 			}
+			motor_telescopic_arms_timer = 0;
 		}		
 	}
 	
@@ -598,7 +616,18 @@ static esp_err_t pan_tilt_to_reset_angle(void){
 	return ret;
 }
 
-static esp_err_t timout_singing_init(void){
+#define TIMEOUT_SINGING_STATE__ARMS_STANDBY			0
+#define TIMEOUT_SINGING_STATE__ARMS_RETRACT			1
+#define TIMEOUT_SINGING_STATE__ARMS_EXTEND			2
+#define TIMEOUT_SINGING_STATE__ARMS_FINAL_EXTEND	3
+uint8_t timeout_singing_state = TIMEOUT_SINGING_STATE__ARMS_STANDBY;
+#define TIMEOUT_SINGING__ARMS_RETRACT_DELAY		1350
+#define TIMEOUT_SINGING__ARMS_RETRACT_PERIOD 	1750
+#define TIMEOUT_SINGING__ARMS_EXTEND_PERIOD 	600
+uint16_t timeout_singing_timer = 0;
+#define TIMEOUT_SINGING__TOTAL_RETRACT_COUNT	20
+uint8_t timeout_singing_retract_count = 0;
+static esp_err_t timeout_singing_init(void){
 	esp_err_t ret = ESP_FAIL;
 	
 	if(speaker_ctrl__play_music(SOUND_TRACK__OPERA_SINGING) == ESP_OK){
@@ -618,14 +647,17 @@ static esp_err_t timout_singing_init(void){
 			motor_tilt_steps_remain = abs(motor_tilt_angle_in_steps - CONFIG_MOTOR_TILT_RESET_STEPS);
 			motor_tilt_timer = 0;										
 		}
-
+		
+		timeout_singing_state = TIMEOUT_SINGING_STATE__ARMS_STANDBY;
+		timeout_singing_timer = 0;
+		timeout_singing_retract_count = 0;
 		orientation_ctrl_status |= ORI_CTRL_STATUS__TIMEOUT_SINGING_EN;	
 	}	
 		
 	return ret;
 }
 
-static esp_err_t pan_at_timout_singing(void){
+static esp_err_t pan_at_timeout_singing(void){
 	esp_err_t ret = ESP_OK;
 	uint8_t PCF8574_output_status_next = PCF8574_output_status;
 	
@@ -638,13 +670,55 @@ static esp_err_t pan_at_timout_singing(void){
 								 CONFIG_MOTOR_PAN_RESET_STEPS * 3 / 2 - motor_pan_angle_in_steps;
 		motor_pan_half_period = MOTOR_PAN_CONST_HALF_PERIOD * 4;						 
 	}
-
+	
+	timeout_singing_timer += TASK_SCHEDULED_PERIOD;
+	switch(timeout_singing_state){
+		case TIMEOUT_SINGING_STATE__ARMS_STANDBY:
+			if(timeout_singing_timer >= TIMEOUT_SINGING__ARMS_RETRACT_DELAY){
+				timeout_singing_timer = 0;
+				PCF8574_output_status_next &= ~MOTOR_TELESCOPE_DIR__CCW;
+				motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS;
+				motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD * 5;
+				motor_telescopic_arms_timer = 0;				
+				timeout_singing_state = TIMEOUT_SINGING_STATE__ARMS_RETRACT;				
+			}
+		break;
+		case TIMEOUT_SINGING_STATE__ARMS_RETRACT:
+			if(timeout_singing_timer >= TIMEOUT_SINGING__ARMS_RETRACT_PERIOD){
+				timeout_singing_timer = 0;
+				PCF8574_output_status_next |= MOTOR_TELESCOPE_DIR__CCW;
+				motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS;				
+				motor_telescopic_arms_timer = 0;				
+				if(++timeout_singing_retract_count < TIMEOUT_SINGING__TOTAL_RETRACT_COUNT){
+					motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD;
+					timeout_singing_state = TIMEOUT_SINGING_STATE__ARMS_EXTEND;									
+				}else{
+					motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD * 5;
+					timeout_singing_state = TIMEOUT_SINGING_STATE__ARMS_FINAL_EXTEND;
+				}
+			}
+		break;
+		case TIMEOUT_SINGING_STATE__ARMS_EXTEND:
+			if(timeout_singing_timer >= TIMEOUT_SINGING__ARMS_EXTEND_PERIOD){
+				timeout_singing_timer = 0;
+				PCF8574_output_status_next &= ~MOTOR_TELESCOPE_DIR__CCW;
+				motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS;
+				motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD * 5;
+				motor_telescopic_arms_timer = 0;				
+				timeout_singing_state = TIMEOUT_SINGING_STATE__ARMS_RETRACT;				
+			}
+		break;		
+		default:
+		break;
+	}
+	
 	if(PCF8574_output_status_next != PCF8574_output_status){
 		PCF8574_output_status = PCF8574_output_status_next;
 		ret = pcf8574_set_output_pins(PCF8574_output_status_next);
 		if( ret != ESP_OK){
 			ESP_LOGE(TAG, "PCF8574 set output fail");
 		}		
-	}	
+	}		
+	
 	return ret;
 }
