@@ -156,7 +156,7 @@ static void fire_ctrl_task(void *pvParameter){
 		if((xQueueReceive(fire_ctrl_event_queue, &fc_evt, 0)) == pdTRUE){
 			switch (fc_evt.id){
 				case OPEN_FIRE:
-					if(orientation_ctrl_status & ORI_CTRL_STATUS__TELESCOPE_ARMS_EXTENDED){
+					if(orientation_ctrl_status & ORI_CTRL_STATUS__TELESCOPIC_ARMS_EXTENDED){
 						if(fire_ctrl_status & STATUS__SAFETY_EN){
 							remain_round_L = FIRE_BURST_COUNT;
 							remain_round_R = FIRE_BURST_COUNT;				
@@ -220,7 +220,7 @@ static void fire_ctrl_task(void *pvParameter){
 		}
 		
 		if(!(fire_ctrl_status & STATUS__SAFETY_EN) && 
-		   (orientation_ctrl_status & ORI_CTRL_STATUS__TELESCOPE_ARMS_EXTENDED)){
+		   (orientation_ctrl_status & ORI_CTRL_STATUS__TELESCOPIC_ARMS_EXTENDED)){
 			gpio_set_level(RED_DOT_L_CTRL_PIN_NUM, 1);
 			gpio_set_level(RED_DOT_R_CTRL_PIN_NUM, 1);		
 		}else{
