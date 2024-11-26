@@ -235,7 +235,7 @@ static void fire_ctrl_task(void *pvParameter){
 void motor_pwm_ctrl(ledc_channel_config_t* ch_config, uint16_t* fire_ctrl_timer, uint8_t* fire_ctrl_debounce, uint16_t* measure_period, uint8_t* motor_pwm_duty, 
 					uint8_t* remain_round, uint8_t spring_released_pin, uint8_t spring_released_flag, uint8_t first_round_flag){
 	if(*remain_round){	
-		(*fire_ctrl_timer) += FIRE_CTRL_ISR_PERIOD_MS;
+		(*fire_ctrl_timer) += (FIRE_CTRL_ISR_PERIOD_US / 1000);
 		if(fire_ctrl_status & spring_released_flag){
 			if(!gpio_get_level(spring_released_pin)){
 			// Airsoft's spring is already released	
@@ -312,10 +312,10 @@ void fire_ctrl__isr(void){
 	if(remain_round_L || remain_round_R){
 		if(fire_ctrl_status & STATUS__SAFETY_EN){
 			// Flashing LEDs if airsoft safety is locked.
-			if(global_timer_ms_count % 100 < 50){
+			if(global_timer_us_count % 100000 < 50000){
 				gpio_set_level(RED_DOT_L_CTRL_PIN_NUM, 0);
 				gpio_set_level(RED_DOT_R_CTRL_PIN_NUM, 0);
-				if(global_timer_ms_count % 100 == 0){
+				if(global_timer_us_count % 100000 == 0){
 					remain_round_L--;
 					remain_round_R--;
 				}				

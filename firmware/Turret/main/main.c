@@ -36,14 +36,13 @@ static esp_err_t i2c_init(i2c_config_t* conf, int pin_sda, int pin_scl){
     return i2c_driver_install(I2C_PORT_DEFAULT, conf->mode, 0, 0, 0);	
 }
 
-uint16_t global_timer_ms_count = 0;
+uint32_t global_timer_us_count = 0;
 static void global_timer_isr(void *pvParameter){
-	global_timer_ms_count += GLOBAL_TIMER_INTR_PEROID;
-	if(global_timer_ms_count >= GLOBAL_TIMER_INTR_PEROID * 1000){global_timer_ms_count = 0;}
+	global_timer_us_count += GLOBAL_TIMER_INTR_PEROID;
+	if(global_timer_us_count >= GLOBAL_TIMER_INTR_PEROID * 400){global_timer_us_count = 0;}
 	
-	if(global_timer_ms_count % STEPPER_MOTOR_STEP_HALF_PERIOD_MS == 0){stepper_motor_steps_ctrl_isr();}
-	if(global_timer_ms_count % FIRE_CTRL_ISR_PERIOD_MS == 0){fire_ctrl__isr();}
-	
+	if(global_timer_us_count % STEPPER_MOTOR_STEP_HALF_PERIOD_US == 0){stepper_motor_steps_ctrl_isr();}
+	if(global_timer_us_count % FIRE_CTRL_ISR_PERIOD_US == 0){fire_ctrl__isr();}	
 }
 
 static esp_err_t global_timer_intr_init(esp_timer_handle_t* handle){
@@ -52,8 +51,8 @@ static esp_err_t global_timer_intr_init(esp_timer_handle_t* handle){
         .name = "global_timer_isr"
     };		
 	esp_timer_create(&motor_timer_args, handle);
-	global_timer_ms_count = 0;
-	esp_timer_start_periodic(*handle, GLOBAL_TIMER_INTR_PEROID * 1000);
+	global_timer_us_count = 0;
+	esp_timer_start_periodic(*handle, GLOBAL_TIMER_INTR_PEROID);
 	return ESP_OK;
 }
 

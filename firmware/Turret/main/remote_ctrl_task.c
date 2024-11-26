@@ -293,10 +293,10 @@ static void remote_ctrl_task(void *pvParameter)
 											}											
 										}										
 									}else{
-										oc_evt.id = RESET_PAN_TILT_ALARM;
+										oc_evt.id = RESET_PAN_TILT_ENDSTOP_ALARM;
 										oc_evt.info = NULL;
 										if(xQueueSend(orientation_ctrl_event_queue, &oc_evt, 0) != pdTRUE){
-											ESP_LOGW(TAG, "Push RESET_PAN_TILT_ALARM to orientation_ctrl_event_queue fail");
+											ESP_LOGW(TAG, "Push RESET_PAN_TILT_ENDSTOP_ALARM to orientation_ctrl_event_queue fail");
 										}										
 									}
 									// Decode received fire ctrl command		
@@ -368,7 +368,8 @@ static void remote_ctrl_task(void *pvParameter)
 											   !(orientation_ctrl_status & ORI_CTRL_STATUS__TIMEOUT_SINGING_EN)){
 												speaker_ctrl__play_music(SOUND_TRACK__HELLO);
 											}else{
-												// Orientation ctrl task will play "Hello" track after extend the telescope arms. 
+												// Orientation ctrl task will play "Hello" track after extend the telescope arms 
+												// at the connection timeout scenario. 
 											}											
 										}
 										remote_ctrl_state = REMOTE_CTRL_STATE__CMD_HANDLING;																				

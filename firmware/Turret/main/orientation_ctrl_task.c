@@ -27,18 +27,18 @@ static const char *TAG = "orientation_ctrl";
 #define MOTOR_PAN_ENDSTOP_PIN_NUM		19
 #define MOTOR_PAN_ENDSTOP_PIN_SEL		(1ULL << MOTOR_PAN_ENDSTOP_PIN_NUM)
 
-#define MOTOR_TELESCOPIC_ARM_DIR__CW		0x00	// Retract telescopic arms
+#define MOTOR_TELESCOPIC_ARM_DIR__CW	0x00	// Retract telescopic arms
 #define MOTOR_TELESCOPIC_ARM_DIR__CCW	0x01	// Extend telescopic arms
-#define MOTOR_TILT_DIR__CW			0x00	// Tilt up
-#define MOTOR_TILT_DIR__CCW			0x02	// Tilt down
-#define MOTOR_PAN_DIR__CW			0x00	// Pan counter-clockwise
-#define MOTOR_PAN_DIR__CCW			0x04	// Pan clockwise
-#define MOTOR_DISABLE				0x08
+#define MOTOR_TILT_DIR__CW				0x00	// Tilt up
+#define MOTOR_TILT_DIR__CCW				0x02	// Tilt down
+#define MOTOR_PAN_DIR__CW				0x00	// Pan counter-clockwise
+#define MOTOR_PAN_DIR__CCW				0x04	// Pan clockwise
+#define MOTOR_DISABLE					0x08
 static uint8_t PCF8574_output_status = 0x00;
 
-#define MOTOR_TELESCOPE_STEP_PIN__HIGH		0x01
-#define MOTOR_TILT_STEP_PIN__HIGH			0x02
-#define MOTOR_PAN_STEP_PIN__HIGH			0x04
+#define MOTOR_TELESCOPE_STEP_PIN__HIGH	0x01
+#define MOTOR_TILT_STEP_PIN__HIGH		0x02
+#define MOTOR_PAN_STEP_PIN__HIGH		0x04
 static uint8_t motors_step_pin_level = 0x00;
 
 uint16_t orientation_ctrl_status = ORI_CTRL_STATUS__PAN_LEFT_ENDSTOP_ALARM_EN | 
@@ -56,27 +56,51 @@ int16_t motor_pan_steps_remain = 0, motor_pan_angle_in_steps = CONFIG_MOTOR_PAN_
 uint8_t motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD;
 uint8_t motor_telescopic_arms_timer = 0;
 
-#define MOTOR_TILT_CONST_HALF_PERIOD	1
-#define MOTOR_TILT_DEC_STEPS_COUNT		32
-uint8_t motor_tilt_dec_steps_half_period_lookup[MOTOR_TILT_DEC_STEPS_COUNT] = {8, 8, 8, 8, 8, 8,
-																			   7, 7, 7, 7, 7,
-																			   6, 6, 6, 
-																			   5, 5, 5,
-																			   4, 4, 4, 4,
-																			   3, 3, 3, 3, 3,
-																			   2, 2, 2, 2, 2, 2};
+#define MOTOR_TILT_CONST_HALF_PERIOD	4
+#define MOTOR_TILT_DEC_STEPS_COUNT		64
+uint8_t motor_tilt_dec_steps_half_period_lookup[MOTOR_TILT_DEC_STEPS_COUNT] = {20, 20, 20, 20, 20, 20, 20,
+																			   19, 19, 19, 19, 19,
+																			   18, 18, 18, 18,
+																			   17, 17, 17, 17,
+																			   16, 16, 16,
+																			   15, 15, 15,
+																			   14, 14, 14,
+																			   13, 13, 13,
+																			   12, 12,
+																			   11, 11, 11,
+																			   10, 10, 10,
+																			   9, 9, 9, 
+																			   8, 8, 8, 8,
+																			   7, 7, 7, 7,
+																			   6, 6, 6, 6, 6,
+																			   5, 5, 5, 5, 5, 5, 5, 5};
 uint8_t motor_tilt_half_period = MOTOR_TILT_CONST_HALF_PERIOD;
 uint8_t motor_tilt_timer = 0;
 
-#define MOTOR_PAN_CONST_HALF_PERIOD		1
-#define MOTOR_PAN_DEC_STEPS_COUNT		32
-uint8_t motor_pan_dec_steps_half_period_lookup[MOTOR_TILT_DEC_STEPS_COUNT] = {8, 8, 8, 8, 8, 8,
-																			  7, 7, 7, 7, 7,
-																			  6, 6, 6, 
-																			  5, 5, 5,
-																			  4, 4, 4, 4,
-																			  3, 3, 3, 3, 3,
-																			  2, 2, 2, 2, 2, 2};
+#define MOTOR_PAN_CONST_HALF_PERIOD		2
+#define MOTOR_PAN_DEC_STEPS_COUNT		64
+uint8_t motor_pan_dec_steps_half_period_lookup[MOTOR_PAN_DEC_STEPS_COUNT] = {24, 24, 24, 24, 24,
+																			 23, 23, 23, 23, 23,
+																			 22, 22, 22,
+																			 21, 21, 21,
+																			 20, 20, 20,
+																			 19, 19,
+																			 18, 18,
+																			 17, 17, 
+																			 16, 16,
+																			 15, 15, 
+																			 14, 14, 14,
+																			 13, 13,
+																			 12, 12,
+																			 11, 11,
+																			 10, 10,
+																			 9, 9,
+																			 8, 8,
+																			 7, 7, 7, 
+																			 6, 6, 6,
+																			 5, 5, 5,
+																			 4, 4, 4, 4, 4,
+																			 3, 3, 3, 3, 3, 3};
 uint8_t motor_pan_half_period = MOTOR_PAN_CONST_HALF_PERIOD;
 uint8_t motor_pan_timer = 0;
 
@@ -209,8 +233,7 @@ static void orientation_ctrl_task(void *pvParameter){
 		if((xQueueReceive(orientation_ctrl_event_queue, &oc_evt, 0)) == pdTRUE){
 			switch (oc_evt.id){
 				case SWITCH_TELESCOPIC_ARM:
-					if(orientation_ctrl_status & ORI_CTRL_STATUS__TELESCOPIC_ARMS_EXTENDED){
-ESP_LOGI(TAG, "Check C");						
+					if(orientation_ctrl_status & ORI_CTRL_STATUS__TELESCOPIC_ARMS_EXTENDED){				
 						retract_telescopic_arms();
 					}else{				
 						extend_telescopic_arms();
@@ -258,7 +281,7 @@ ESP_LOGI(TAG, "Check C");
 						extend_telescopic_arms();						
 					}				
 				break;
-				case RESET_PAN_TILT_ALARM:
+				case RESET_PAN_TILT_ENDSTOP_ALARM:
 					orientation_ctrl_status |= (ORI_CTRL_STATUS__PAN_LEFT_ENDSTOP_ALARM_EN | 
 												ORI_CTRL_STATUS__PAN_RIGHT_ENDSTOP_ALARM_EN | 
 												ORI_CTRL_STATUS__TILT_UP_ENDSTOP_ALARM_EN | 
@@ -269,8 +292,7 @@ ESP_LOGI(TAG, "Check C");
 						orientation_ctrl_status &= ~ORI_CTRL_STATUS__TIMEOUT_SINGING_EN;
 						
 						if(!(orientation_ctrl_status & ORI_CTRL_STATUS__TELESCOPIC_ARMS_EXTENDED)){
-							extend_telescopic_arms();
-ESP_LOGI(TAG, "Check D, orientation_ctrl_status = 0x%04X", orientation_ctrl_status);							
+							extend_telescopic_arms();						
 						}
 						pan_tilt_to_reset_angle();
 						orientation_ctrl_status |= ORI_CTRL_STATUS__EXTEND_TELESCOPE_ARMS_FROM_TIMEOUT;													
@@ -282,11 +304,12 @@ ESP_LOGI(TAG, "Check D, orientation_ctrl_status = 0x%04X", orientation_ctrl_stat
 					}else{}													
 				break;
 				case ENABLE_TIMEOUT_SINGING:
-					timeout_singing_init();
+					if(orientation_ctrl_status & ORI_CTRL_STATUS__TELESCOPIC_ARMS_EXTENDED){	
+						timeout_singing_init();
+					}
 				break;
 				case ENABLE_TIMEOUT_RETRACT:
-					if(orientation_ctrl_status & ORI_CTRL_STATUS__TELESCOPIC_ARMS_EXTENDED){
-ESP_LOGI(TAG, "Check B");						
+					if(orientation_ctrl_status & ORI_CTRL_STATUS__TELESCOPIC_ARMS_EXTENDED){		
 						retract_telescopic_arms();
 						orientation_ctrl_status |= ORI_CTRL_STATUS__TIMEOUT_RETRACT_EN;					
 					}
@@ -329,7 +352,6 @@ ESP_LOGI(TAG, "Check B");
 				pan_at_timeout_singing();
 			}else{
 				orientation_ctrl_status &= ~ORI_CTRL_STATUS__TIMEOUT_SINGING_EN;
-ESP_LOGI(TAG, "Check A");
 				retract_telescopic_arms();
 				orientation_ctrl_status |= ORI_CTRL_STATUS__TIMEOUT_RETRACT_EN;
 			}
@@ -419,7 +441,7 @@ void stepper_motor_steps_ctrl_isr(void){
 	}
 	
 	if(motor_tilt_steps_remain > 0){	
-		if(motor_tilt_timer++ == motor_tilt_half_period){	
+		if(++motor_tilt_timer == motor_tilt_half_period){	
 			if(!(PCF8574_output_status & MOTOR_TILT_DIR__CCW)){	
 				if(gpio_get_level(MOTOR_TILT_ENDSTOP_PIN_NUM)){	
 					if(motor_tilt_angle_in_steps > -(CONFIG_MOTOR_TILT_RESET_STEPS / 5)){
@@ -482,7 +504,7 @@ void stepper_motor_steps_ctrl_isr(void){
 	}
 	
 	if(motor_pan_steps_remain > 0){ 
-		if(motor_pan_timer++ == motor_pan_half_period){
+		if(++motor_pan_timer == motor_pan_half_period){
 			if(!(PCF8574_output_status & MOTOR_PAN_DIR__CCW)){
 				if(gpio_get_level(MOTOR_PAN_ENDSTOP_PIN_NUM)){
 					if(motor_pan_angle_in_steps > -(CONFIG_MOTOR_PAN_RESET_STEPS / 10)){
@@ -563,8 +585,6 @@ static esp_err_t pcf8574_set_output_pins(uint8_t pin_mask){
 }
 
 static esp_err_t extend_telescopic_arms(void){
-	esp_err_t ret = ESP_FAIL;
-	
 	if(!(orientation_ctrl_status & ORI_CTRL_STATUS__TELESCOPIC_ARMS_EXTENDED)){
 		PCF8574_output_status |= MOTOR_TELESCOPIC_ARM_DIR__CCW;
 		if(pcf8574_set_output_pins(PCF8574_output_status) != ESP_OK){
@@ -618,15 +638,18 @@ static esp_err_t pan_tilt_to_reset_angle(void){
 }
 
 #define TIMEOUT_SINGING_STATE__ARMS_STANDBY			0
-#define TIMEOUT_SINGING_STATE__ARMS_RETRACT			1
-#define TIMEOUT_SINGING_STATE__ARMS_EXTEND			2
-#define TIMEOUT_SINGING_STATE__ARMS_FINAL_EXTEND	3
+#define TIMEOUT_SINGING_STATE__ARMS_SLOW_RETRACT	1
+#define TIMEOUT_SINGING_STATE__ARMS_FAST_RETRACT	2
+#define TIMEOUT_SINGING_STATE__ARMS_EXTEND			3
+#define TIMEOUT_SINGING_STATE__ARMS_FINAL_EXTEND	4
 uint8_t timeout_singing_state = TIMEOUT_SINGING_STATE__ARMS_STANDBY;
-#define TIMEOUT_SINGING__ARMS_RETRACT_DELAY		1350
-#define TIMEOUT_SINGING__ARMS_RETRACT_PERIOD 	1750
-#define TIMEOUT_SINGING__ARMS_EXTEND_PERIOD 	600
+
+#define TIMEOUT_SINGING__ARMS_RETRACT_DELAY			1450
+#define TIMEOUT_SINGING__ARMS_SLOW_RETRACT_PERIOD 	1750
+#define TIMEOUT_SINGING__ARMS_FAST_RETRACT_PERIOD 	600
+#define TIMEOUT_SINGING__ARMS_EXTEND_PERIOD 		600
 uint16_t timeout_singing_timer = 0;
-#define TIMEOUT_SINGING__TOTAL_RETRACT_COUNT	20
+
 uint8_t timeout_singing_retract_count = 0;
 static esp_err_t timeout_singing_init(void){
 	uint8_t PCF8574_output_status_next;
@@ -687,32 +710,49 @@ static esp_err_t pan_at_timeout_singing(void){
 				motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS;
 				motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD * 5;
 				motor_telescopic_arms_timer = 0;				
-				timeout_singing_state = TIMEOUT_SINGING_STATE__ARMS_RETRACT;				
+				timeout_singing_state = TIMEOUT_SINGING_STATE__ARMS_SLOW_RETRACT;				
 			}
 		break;
-		case TIMEOUT_SINGING_STATE__ARMS_RETRACT:
-			if(timeout_singing_timer >= TIMEOUT_SINGING__ARMS_RETRACT_PERIOD){
+		case TIMEOUT_SINGING_STATE__ARMS_SLOW_RETRACT:
+			if(timeout_singing_timer >= TIMEOUT_SINGING__ARMS_SLOW_RETRACT_PERIOD){
+				timeout_singing_retract_count++;
 				timeout_singing_timer = 0;
 				PCF8574_output_status_next |= MOTOR_TELESCOPIC_ARM_DIR__CCW;
-				motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS;				
+				motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS + 5;				
 				motor_telescopic_arms_timer = 0;				
-				if(++timeout_singing_retract_count < TIMEOUT_SINGING__TOTAL_RETRACT_COUNT){
-					motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD;
-					timeout_singing_state = TIMEOUT_SINGING_STATE__ARMS_EXTEND;									
-				}else{
-					motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD * 5;
-					timeout_singing_state = TIMEOUT_SINGING_STATE__ARMS_FINAL_EXTEND;
-				}
+				motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD;
+				timeout_singing_state = TIMEOUT_SINGING_STATE__ARMS_EXTEND;
 			}
 		break;
+		case TIMEOUT_SINGING_STATE__ARMS_FAST_RETRACT:
+			if(timeout_singing_timer >= TIMEOUT_SINGING__ARMS_FAST_RETRACT_PERIOD){
+				timeout_singing_retract_count++;
+				timeout_singing_timer = 0;
+				PCF8574_output_status_next |= MOTOR_TELESCOPIC_ARM_DIR__CCW;
+				motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS + 5;
+				motor_telescopic_arms_timer = 0;	
+				if(timeout_singing_retract_count < 24){
+					motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD;
+					timeout_singing_state = TIMEOUT_SINGING_STATE__ARMS_EXTEND;										
+				}else{
+					motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD * 5;								
+					timeout_singing_state = TIMEOUT_SINGING_STATE__ARMS_FINAL_EXTEND;														
+				}
+			}
+		break;		
 		case TIMEOUT_SINGING_STATE__ARMS_EXTEND:
 			if(timeout_singing_timer >= TIMEOUT_SINGING__ARMS_EXTEND_PERIOD){
 				timeout_singing_timer = 0;
 				PCF8574_output_status_next &= ~MOTOR_TELESCOPIC_ARM_DIR__CCW;
 				motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS;
-				motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD * 5;
-				motor_telescopic_arms_timer = 0;				
-				timeout_singing_state = TIMEOUT_SINGING_STATE__ARMS_RETRACT;				
+				motor_telescopic_arms_timer = 0;
+				if(timeout_singing_retract_count < 16){
+					motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD * 5;								
+					timeout_singing_state = TIMEOUT_SINGING_STATE__ARMS_SLOW_RETRACT;									
+				}else{
+					motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD * 2;								
+					timeout_singing_state = TIMEOUT_SINGING_STATE__ARMS_FAST_RETRACT;														
+				}
 			}
 		break;		
 		default:

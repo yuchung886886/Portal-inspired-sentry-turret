@@ -21,7 +21,7 @@
 #define TASK_PRIORITY__ORIENTATION_CTRL			(configMAX_PRIORITIES - 3)
 #define TASK_PRIORITY__FIRE_CTRL				(configMAX_PRIORITIES - 4)
 
-#define GLOBAL_TIMER_INTR_PEROID	1
-extern uint16_t global_timer_ms_count;
+#define GLOBAL_TIMER_INTR_PEROID		250	// in micro-secs
+extern uint32_t global_timer_us_count;
 
 #endif

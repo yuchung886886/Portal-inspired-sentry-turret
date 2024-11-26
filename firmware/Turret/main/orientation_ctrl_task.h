@@ -4,7 +4,7 @@
 typedef enum {
 	SWITCH_TELESCOPIC_ARM,
     SET_PAN_TILT,
-	RESET_PAN_TILT_ALARM,
+	RESET_PAN_TILT_ENDSTOP_ALARM,
 	ENABLE_TIMEOUT_SINGING,
 	ENABLE_TIMEOUT_RETRACT,
 	DUMP_RECV_COOR,
@@ -40,7 +40,7 @@ esp_err_t orientation_ctrl_init(void);
 void orientation_ctrl_get_view_angle(int16_t* pan_angle_x10, int16_t* tilt_angle_x10);
 void orientation_ctrl_get_aim_angle(int16_t* pan_angle_x10, int16_t* tilt_angle_x10, uint8_t* grouping_diameter, uint16_t aim_distance);
 
-#define STEPPER_MOTOR_STEP_HALF_PERIOD_MS		1
+#define STEPPER_MOTOR_STEP_HALF_PERIOD_US		250
 void stepper_motor_steps_ctrl_isr(void);
 
 #define ORIENTATION_CTRL__TIMEOUT_TO_SING		15
