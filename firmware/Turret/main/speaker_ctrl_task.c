@@ -125,7 +125,6 @@ esp_err_t speaker_ctrl__play_music(uint8_t track_index){
 }
 
 esp_err_t speaker_ctrl__stop_music(){
-	speaker_ctrl_event_t sc_evt;
 	
 	if(speaker_ctrl_status & SPEAKER_CTRL_STATUS__BUSY){	
 		i2s_channel_disable(i2s_tx_handle);

@@ -55,23 +55,23 @@ menu "Application Configuration"
         help
             Effective input voltage of AEG Motor in mV
 
-    config MOTOR_PAN_RESET_STEPS
-        int "Pan motor reset steps"
-        default "410"
+    config MOTOR_PAN_RESET_EIGHTH_STEPS
+        int "Pan motor reset eighth steps"
+        default "1640"
         help
-            The amount of (1.8 / 2°) micro steps of the stepper motor to pan the turret for 60°
+            The amount of (1.8° / 8) micro steps of the stepper motor to pan the turret for 60°
 			
-    config MOTOR_TILT_RESET_STEPS
-        int "Tilt motor reset steps"
-        default "165"
+    config MOTOR_TILT_RESET_EIGHTH_STEPS
+        int "Tilt motor reset eighth steps"
+        default "330"
         help
-            The amount of (1.8° / 4) micro steps of the stepper motor to tilt the turret for 15°
+            The amount of (1.8° / 8) micro steps of the stepper motor to tilt the turret for 15°
 			
-    config MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS
-        int "Telescopic arms motor retract steps"
-        default "175"
+    config MOTOR_TELESCOPIC_ARMS_RETRACT_EIGHTH_STEPS
+        int "Telescopic arms motor retract eighth steps"
+        default "700"
         help
-            The amount of (1.8° / 2) micro steps to retract the telescopic arms for 41.5mm.
+            The amount of (1.8° / 8) micro steps to retract the telescopic arms for 41.5mm.
 			
     config AF_MOTOR_EFFECTIVE_VOLTAGE
         int "Ammo feeding motor effective input voltage(mV)"

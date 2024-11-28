@@ -49,8 +49,8 @@ uint16_t orientation_ctrl_status = ORI_CTRL_STATUS__PAN_LEFT_ENDSTOP_ALARM_EN |
 #define MOTOR_TILT_RESET_ANGLE_IN_DEGREE		15
 #define MOTOR_PAN_RESET_ANGLE_IN_DEGREE			60
 int16_t motor_telescopic_arms_steps_remain = 0, motor_telescopic_arms_extended_steps = 0;
-int16_t motor_tilt_steps_remain = 0, motor_tilt_angle_in_steps = CONFIG_MOTOR_TILT_RESET_STEPS * 2;
-int16_t motor_pan_steps_remain = 0, motor_pan_angle_in_steps = CONFIG_MOTOR_PAN_RESET_STEPS * 2;
+int16_t motor_tilt_steps_remain = 0, motor_tilt_angle_in_steps = CONFIG_MOTOR_TILT_RESET_EIGHTH_STEPS * 2;
+int16_t motor_pan_steps_remain = 0, motor_pan_angle_in_steps = CONFIG_MOTOR_PAN_RESET_EIGHTH_STEPS * 2;
 
 #define MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD	1
 uint8_t motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD;
@@ -160,13 +160,13 @@ esp_err_t orientation_ctrl_init(void){
 					}
 				}else{
 					orientation_ctrl_status |= ORI_CTRL_STATUS__TELESCOPIC_ARMS_EXTENDED;
-					motor_tilt_steps_remain = CONFIG_MOTOR_TILT_RESET_STEPS * 2;
+					motor_tilt_steps_remain = CONFIG_MOTOR_TILT_RESET_EIGHTH_STEPS * 2;
 					motor_tilt_half_period = MOTOR_TILT_CONST_HALF_PERIOD;
 					motor_tilt_timer = 0;	
-					motor_pan_steps_remain = CONFIG_MOTOR_PAN_RESET_STEPS * 2;
+					motor_pan_steps_remain = CONFIG_MOTOR_PAN_RESET_EIGHTH_STEPS * 2;
 					motor_pan_half_period = MOTOR_PAN_CONST_HALF_PERIOD;
 					motor_pan_timer = 0;					
-					ESP_LOGD(TAG, "Telescope motor run %d steps", CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS * 2 - motor_telescopic_arms_steps_remain);
+					ESP_LOGD(TAG, "Telescope motor run %d steps", CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_EIGHTH_STEPS * 2 - motor_telescopic_arms_steps_remain);
 					initialize_state = INIT_STATE__TILT_PAN_ENDSTOP_SEARCH;
 				}
 			break;
@@ -188,10 +188,10 @@ esp_err_t orientation_ctrl_init(void){
 						return ret;
 					}
 					motor_telescopic_arms_steps_remain = 0;
-					motor_tilt_steps_remain = CONFIG_MOTOR_TILT_RESET_STEPS;
+					motor_tilt_steps_remain = CONFIG_MOTOR_TILT_RESET_EIGHTH_STEPS;
 					motor_tilt_half_period = MOTOR_TILT_CONST_HALF_PERIOD;
 					motor_tilt_timer = 0;
-					motor_pan_steps_remain = CONFIG_MOTOR_PAN_RESET_STEPS;
+					motor_pan_steps_remain = CONFIG_MOTOR_PAN_RESET_EIGHTH_STEPS;
 					motor_pan_half_period = MOTOR_PAN_CONST_HALF_PERIOD;
 					motor_pan_timer = 0;
 					initialize_state = INIT_STATE__TILT_PAN_RESET;					
@@ -257,7 +257,7 @@ static void orientation_ctrl_task(void *pvParameter){
 								}
 							} 
 
-							motor_pan_steps_remain = abs(target_position_ptr->pan_angle_offset_x10 * CONFIG_MOTOR_PAN_RESET_STEPS / MOTOR_PAN_RESET_ANGLE_IN_DEGREE / 10);
+							motor_pan_steps_remain = abs(target_position_ptr->pan_angle_offset_x10 * CONFIG_MOTOR_PAN_RESET_EIGHTH_STEPS / MOTOR_PAN_RESET_ANGLE_IN_DEGREE / 10);
 							if(motor_pan_steps_remain < MOTOR_PAN_DEC_STEPS_COUNT){
 								if(motor_pan_half_period < motor_pan_dec_steps_half_period_lookup[motor_pan_steps_remain]){
 									motor_pan_half_period = motor_pan_dec_steps_half_period_lookup[motor_pan_steps_remain];
@@ -267,7 +267,7 @@ static void orientation_ctrl_task(void *pvParameter){
 							}
 							motor_pan_timer = 0;							
 							
-							motor_tilt_steps_remain = abs(target_position_ptr->tilt_angle_offset_x10 * CONFIG_MOTOR_TILT_RESET_STEPS / MOTOR_TILT_RESET_ANGLE_IN_DEGREE / 10);
+							motor_tilt_steps_remain = abs(target_position_ptr->tilt_angle_offset_x10 * CONFIG_MOTOR_TILT_RESET_EIGHTH_STEPS / MOTOR_TILT_RESET_ANGLE_IN_DEGREE / 10);
 							if(motor_tilt_steps_remain < MOTOR_TILT_DEC_STEPS_COUNT){
 								motor_tilt_half_period = motor_tilt_dec_steps_half_period_lookup[motor_tilt_steps_remain];
 							}else{
@@ -323,8 +323,8 @@ static void orientation_ctrl_task(void *pvParameter){
 		}			
 		
 		if(orientation_ctrl_status & ORI_CTRL_STATUS__PAN_TILT_TO_DEFAULT){	
-			if((motor_pan_angle_in_steps == CONFIG_MOTOR_PAN_RESET_STEPS) && 
-			   (motor_tilt_angle_in_steps == CONFIG_MOTOR_TILT_RESET_STEPS)){	
+			if((motor_pan_angle_in_steps == CONFIG_MOTOR_PAN_RESET_EIGHTH_STEPS) && 
+			   (motor_tilt_angle_in_steps == CONFIG_MOTOR_TILT_RESET_EIGHTH_STEPS)){	
 				if(orientation_ctrl_status & ORI_CTRL_STATUS__TELESCOPIC_ARMS_EXTENDED){
 					if(orientation_ctrl_status & ORI_CTRL_STATUS__TIMEOUT_RETRACT_EN){
 						speaker_ctrl__play_music(SOUND_TRACK__GOODNIGHT);
@@ -335,7 +335,7 @@ static void orientation_ctrl_task(void *pvParameter){
 						if(pcf8574_set_output_pins(PCF8574_output_status) != ESP_OK){
 							ESP_LOGE(TAG, "PCF8574 set output fail");						
 						}else{
-							motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS;
+							motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_EIGHTH_STEPS;
 							motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD;
 							motor_telescopic_arms_timer = 0;
 							speaker_ctrl__play_music(SOUND_TRACK__RETRACT);												
@@ -360,8 +360,8 @@ static void orientation_ctrl_task(void *pvParameter){
 		// If telescopic arms were retracted due to wireless connection timeout, 
 		// play "Hello" track after the telescopic arms are extended when wireless connection resume.
 		if(orientation_ctrl_status & ORI_CTRL_STATUS__EXTEND_TELESCOPE_ARMS_FROM_TIMEOUT){			
-			if((motor_pan_angle_in_steps == CONFIG_MOTOR_PAN_RESET_STEPS) &&
-			   (motor_tilt_angle_in_steps == CONFIG_MOTOR_TILT_RESET_STEPS) &&
+			if((motor_pan_angle_in_steps == CONFIG_MOTOR_PAN_RESET_EIGHTH_STEPS) &&
+			   (motor_tilt_angle_in_steps == CONFIG_MOTOR_TILT_RESET_EIGHTH_STEPS) &&
 			   (orientation_ctrl_status & ORI_CTRL_STATUS__TELESCOPIC_ARMS_EXTENDED)){
 				if(!(speaker_ctrl_status & SPEAKER_CTRL_STATUS__BUSY)){
 					speaker_ctrl__play_music(SOUND_TRACK__HELLO);
@@ -375,8 +375,8 @@ static void orientation_ctrl_task(void *pvParameter){
 }
 
 void orientation_ctrl_get_view_angle(int16_t* pan_angle_x10, int16_t* tilt_angle_x10){
-	*pan_angle_x10 = ((motor_pan_angle_in_steps * ((float)MOTOR_PAN_RESET_ANGLE_IN_DEGREE / CONFIG_MOTOR_PAN_RESET_STEPS)) - MOTOR_PAN_RESET_ANGLE_IN_DEGREE) * 10; 
-	*tilt_angle_x10 = -((motor_tilt_angle_in_steps * ((float)MOTOR_TILT_RESET_ANGLE_IN_DEGREE / CONFIG_MOTOR_TILT_RESET_STEPS)) - MOTOR_TILT_RESET_ANGLE_IN_DEGREE) * 10;	
+	*pan_angle_x10 = ((motor_pan_angle_in_steps * ((float)MOTOR_PAN_RESET_ANGLE_IN_DEGREE / CONFIG_MOTOR_PAN_RESET_EIGHTH_STEPS)) - MOTOR_PAN_RESET_ANGLE_IN_DEGREE) * 10; 
+	*tilt_angle_x10 = -((motor_tilt_angle_in_steps * ((float)MOTOR_TILT_RESET_ANGLE_IN_DEGREE / CONFIG_MOTOR_TILT_RESET_EIGHTH_STEPS)) - MOTOR_TILT_RESET_ANGLE_IN_DEGREE) * 10;	
 }
 
 #define GUNS_SEPERATE_DISTANCE		24	// in cm.
@@ -386,7 +386,7 @@ void orientation_ctrl_get_aim_angle(int16_t* pan_angle_x10, int16_t* tilt_angle_
 	int16_t guns_center_pan_angle_x10, guns_center_tilt_angle_x10;
 	float motor_tilt_angle;
 	
-	motor_tilt_angle = -((motor_tilt_angle_in_steps * ((float)MOTOR_TILT_RESET_ANGLE_IN_DEGREE / CONFIG_MOTOR_TILT_RESET_STEPS)) - MOTOR_TILT_RESET_ANGLE_IN_DEGREE);	
+	motor_tilt_angle = -((motor_tilt_angle_in_steps * ((float)MOTOR_TILT_RESET_ANGLE_IN_DEGREE / CONFIG_MOTOR_TILT_RESET_EIGHTH_STEPS)) - MOTOR_TILT_RESET_ANGLE_IN_DEGREE);	
 	
 	left_gun_horizontal_offset = (-GUNS_SEPERATE_DISTANCE / 2) + (aim_distance * tan(atan((float)(CONFIG_LEFT_AEG_HORIZ_OFFSET - (-GUNS_SEPERATE_DISTANCE / 2)) / CONFIG_AIMING_SIGHT_CALIBRATION_DISTANCE)));
 	right_gun_horizontal_offset = (GUNS_SEPERATE_DISTANCE / 2) + (aim_distance * tan(atan((float)(CONFIG_RIGHT_AEG_HORIZ_OFFSET - GUNS_SEPERATE_DISTANCE / 2) / CONFIG_AIMING_SIGHT_CALIBRATION_DISTANCE)));
@@ -419,7 +419,7 @@ void stepper_motor_steps_ctrl_isr(void){
 					ESP_LOGD(TAG, "motor_telescopic_arms_steps_remain = %d", motor_telescopic_arms_steps_remain);	
 					orientation_ctrl_status |= ORI_CTRL_STATUS__TELESCOPIC_ARMS_EXTENDED;
 					motor_telescopic_arms_steps_remain = 0;				
-					motor_telescopic_arms_extended_steps = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS;
+					motor_telescopic_arms_extended_steps = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_EIGHTH_STEPS;
 				}			
 			}else{
 				if(motor_telescopic_arms_extended_steps > 0){
@@ -444,7 +444,7 @@ void stepper_motor_steps_ctrl_isr(void){
 		if(++motor_tilt_timer == motor_tilt_half_period){	
 			if(!(PCF8574_output_status & MOTOR_TILT_DIR__CCW)){	
 				if(gpio_get_level(MOTOR_TILT_ENDSTOP_PIN_NUM)){	
-					if(motor_tilt_angle_in_steps > -(CONFIG_MOTOR_TILT_RESET_STEPS / 5)){
+					if(motor_tilt_angle_in_steps > -(CONFIG_MOTOR_TILT_RESET_EIGHTH_STEPS / 5)){
 						if(motors_step_pin_level & MOTOR_TILT_STEP_PIN__HIGH){
 							motors_step_pin_level &= ~MOTOR_TILT_STEP_PIN__HIGH;
 						}else{
@@ -476,7 +476,7 @@ void stepper_motor_steps_ctrl_isr(void){
 					motor_tilt_steps_remain = 0;				
 				}			
 			}else{
-				if(motor_tilt_angle_in_steps < (CONFIG_MOTOR_TILT_RESET_STEPS * 2)){
+				if(motor_tilt_angle_in_steps < (CONFIG_MOTOR_TILT_RESET_EIGHTH_STEPS * 2)){
 					if(motors_step_pin_level & MOTOR_TILT_STEP_PIN__HIGH){
 						motors_step_pin_level &= ~MOTOR_TILT_STEP_PIN__HIGH;
 					}else{
@@ -507,7 +507,7 @@ void stepper_motor_steps_ctrl_isr(void){
 		if(++motor_pan_timer == motor_pan_half_period){
 			if(!(PCF8574_output_status & MOTOR_PAN_DIR__CCW)){
 				if(gpio_get_level(MOTOR_PAN_ENDSTOP_PIN_NUM)){
-					if(motor_pan_angle_in_steps > -(CONFIG_MOTOR_PAN_RESET_STEPS / 10)){
+					if(motor_pan_angle_in_steps > -(CONFIG_MOTOR_PAN_RESET_EIGHTH_STEPS / 10)){
 						if(motors_step_pin_level & MOTOR_PAN_STEP_PIN__HIGH){
 							motors_step_pin_level &= ~MOTOR_PAN_STEP_PIN__HIGH;
 						}else{
@@ -539,7 +539,7 @@ void stepper_motor_steps_ctrl_isr(void){
 					motor_pan_steps_remain = 0;				
 				}			
 			}else{
-				if(motor_pan_angle_in_steps < (CONFIG_MOTOR_PAN_RESET_STEPS * 2)){
+				if(motor_pan_angle_in_steps < (CONFIG_MOTOR_PAN_RESET_EIGHTH_STEPS * 2)){
 					if(motors_step_pin_level & MOTOR_PAN_STEP_PIN__HIGH){
 						motors_step_pin_level &= ~MOTOR_PAN_STEP_PIN__HIGH;
 					}else{
@@ -591,7 +591,7 @@ static esp_err_t extend_telescopic_arms(void){
 			ESP_LOGE(TAG, "PCF8574 set output fail");
 			return ESP_FAIL;
 		}		
-		motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS + 5;
+		motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_EIGHTH_STEPS + 5;
 		motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD;
 		motor_telescopic_arms_timer = 0;							
 		speaker_ctrl__play_music(SOUND_TRACK__DEPLOY);											
@@ -612,8 +612,8 @@ static esp_err_t pan_tilt_to_reset_angle(void){
 	esp_err_t ret = ESP_OK;
 	 
 	if(!(orientation_ctrl_status & ORI_CTRL_STATUS__PAN_TILT_TO_DEFAULT)){							
-		PCF8574_output_status_next = ((motor_pan_angle_in_steps > CONFIG_MOTOR_PAN_RESET_STEPS) ? MOTOR_PAN_DIR__CW : MOTOR_PAN_DIR__CCW) |
-									 ((motor_tilt_angle_in_steps > CONFIG_MOTOR_TILT_RESET_STEPS) ? MOTOR_TILT_DIR__CW : MOTOR_TILT_DIR__CCW) |
+		PCF8574_output_status_next = ((motor_pan_angle_in_steps > CONFIG_MOTOR_PAN_RESET_EIGHTH_STEPS) ? MOTOR_PAN_DIR__CW : MOTOR_PAN_DIR__CCW) |
+									 ((motor_tilt_angle_in_steps > CONFIG_MOTOR_TILT_RESET_EIGHTH_STEPS) ? MOTOR_TILT_DIR__CW : MOTOR_TILT_DIR__CCW) |
 									 (PCF8574_output_status & MOTOR_TELESCOPIC_ARM_DIR__CCW);
 		if(PCF8574_output_status != PCF8574_output_status_next){
 			PCF8574_output_status = PCF8574_output_status_next;
@@ -624,10 +624,10 @@ static esp_err_t pan_tilt_to_reset_angle(void){
 		}
 		if(ret == ESP_OK){
 			motor_pan_half_period = MOTOR_PAN_CONST_HALF_PERIOD;						
-			motor_pan_steps_remain = abs(motor_pan_angle_in_steps - CONFIG_MOTOR_PAN_RESET_STEPS);
+			motor_pan_steps_remain = abs(motor_pan_angle_in_steps - CONFIG_MOTOR_PAN_RESET_EIGHTH_STEPS);
 			motor_pan_timer = 0;
 			motor_tilt_half_period = MOTOR_TILT_CONST_HALF_PERIOD;						
-			motor_tilt_steps_remain = abs(motor_tilt_angle_in_steps - CONFIG_MOTOR_TILT_RESET_STEPS);	
+			motor_tilt_steps_remain = abs(motor_tilt_angle_in_steps - CONFIG_MOTOR_TILT_RESET_EIGHTH_STEPS);	
 			motor_tilt_timer = 0;							
 			orientation_ctrl_status |= ORI_CTRL_STATUS__PAN_TILT_TO_DEFAULT;			
 		}			
@@ -657,8 +657,8 @@ static esp_err_t timeout_singing_init(void){
 	
 	ret = speaker_ctrl__play_music(SOUND_TRACK__OPERA_SINGING);
 	if(ret == ESP_OK){
-		PCF8574_output_status_next = ((motor_pan_angle_in_steps > CONFIG_MOTOR_PAN_RESET_STEPS) ? MOTOR_PAN_DIR__CW : MOTOR_PAN_DIR__CCW) |
-									 ((motor_tilt_angle_in_steps > CONFIG_MOTOR_TILT_RESET_STEPS) ? MOTOR_TILT_DIR__CW : MOTOR_TILT_DIR__CCW) |
+		PCF8574_output_status_next = ((motor_pan_angle_in_steps > CONFIG_MOTOR_PAN_RESET_EIGHTH_STEPS) ? MOTOR_PAN_DIR__CW : MOTOR_PAN_DIR__CCW) |
+									 ((motor_tilt_angle_in_steps > CONFIG_MOTOR_TILT_RESET_EIGHTH_STEPS) ? MOTOR_TILT_DIR__CW : MOTOR_TILT_DIR__CCW) |
 									 (PCF8574_output_status & MOTOR_TELESCOPIC_ARM_DIR__CCW);
 		if(PCF8574_output_status != PCF8574_output_status_next){
 			PCF8574_output_status = PCF8574_output_status_next;
@@ -669,12 +669,12 @@ static esp_err_t timeout_singing_init(void){
 		}
 		if(ret == ESP_OK){
 			motor_pan_half_period = MOTOR_PAN_CONST_HALF_PERIOD * 4;						
-			motor_pan_steps_remain = motor_pan_angle_in_steps > CONFIG_MOTOR_PAN_RESET_STEPS ? 
-									 motor_pan_angle_in_steps - CONFIG_MOTOR_PAN_RESET_STEPS / 2 : 
-									 CONFIG_MOTOR_PAN_RESET_STEPS * 3 / 2 - motor_pan_angle_in_steps;
+			motor_pan_steps_remain = motor_pan_angle_in_steps > CONFIG_MOTOR_PAN_RESET_EIGHTH_STEPS ? 
+									 motor_pan_angle_in_steps - CONFIG_MOTOR_PAN_RESET_EIGHTH_STEPS / 2 : 
+									 CONFIG_MOTOR_PAN_RESET_EIGHTH_STEPS * 3 / 2 - motor_pan_angle_in_steps;
 			motor_pan_timer = 0;
 			motor_tilt_half_period = MOTOR_TILT_CONST_HALF_PERIOD * 2;						
-			motor_tilt_steps_remain = abs(motor_tilt_angle_in_steps - CONFIG_MOTOR_TILT_RESET_STEPS);
+			motor_tilt_steps_remain = abs(motor_tilt_angle_in_steps - CONFIG_MOTOR_TILT_RESET_EIGHTH_STEPS);
 			motor_tilt_timer = 0;										
 		}
 		
@@ -692,12 +692,12 @@ static esp_err_t pan_at_timeout_singing(void){
 	uint8_t PCF8574_output_status_next = PCF8574_output_status;
 	
 	if(!motor_pan_steps_remain){
-		PCF8574_output_status_next = motor_pan_angle_in_steps > CONFIG_MOTOR_PAN_RESET_STEPS ?
+		PCF8574_output_status_next = motor_pan_angle_in_steps > CONFIG_MOTOR_PAN_RESET_EIGHTH_STEPS ?
 									 PCF8574_output_status_next & ~MOTOR_PAN_DIR__CCW :
 									 PCF8574_output_status_next | MOTOR_PAN_DIR__CCW;		
-		motor_pan_steps_remain = motor_pan_angle_in_steps > CONFIG_MOTOR_PAN_RESET_STEPS ? 
-								 motor_pan_angle_in_steps - CONFIG_MOTOR_PAN_RESET_STEPS / 2 : 
-								 CONFIG_MOTOR_PAN_RESET_STEPS * 3 / 2 - motor_pan_angle_in_steps;
+		motor_pan_steps_remain = motor_pan_angle_in_steps > CONFIG_MOTOR_PAN_RESET_EIGHTH_STEPS ? 
+								 motor_pan_angle_in_steps - CONFIG_MOTOR_PAN_RESET_EIGHTH_STEPS / 2 : 
+								 CONFIG_MOTOR_PAN_RESET_EIGHTH_STEPS * 3 / 2 - motor_pan_angle_in_steps;
 		motor_pan_half_period = MOTOR_PAN_CONST_HALF_PERIOD * 4;						 
 	}
 	
@@ -707,7 +707,7 @@ static esp_err_t pan_at_timeout_singing(void){
 			if(timeout_singing_timer >= TIMEOUT_SINGING__ARMS_RETRACT_DELAY){
 				timeout_singing_timer = 0;
 				PCF8574_output_status_next &= ~MOTOR_TELESCOPIC_ARM_DIR__CCW;
-				motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS;
+				motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_EIGHTH_STEPS;
 				motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD * 5;
 				motor_telescopic_arms_timer = 0;				
 				timeout_singing_state = TIMEOUT_SINGING_STATE__ARMS_SLOW_RETRACT;				
@@ -718,7 +718,7 @@ static esp_err_t pan_at_timeout_singing(void){
 				timeout_singing_retract_count++;
 				timeout_singing_timer = 0;
 				PCF8574_output_status_next |= MOTOR_TELESCOPIC_ARM_DIR__CCW;
-				motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS + 5;				
+				motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_EIGHTH_STEPS + 5;				
 				motor_telescopic_arms_timer = 0;				
 				motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD;
 				timeout_singing_state = TIMEOUT_SINGING_STATE__ARMS_EXTEND;
@@ -729,7 +729,7 @@ static esp_err_t pan_at_timeout_singing(void){
 				timeout_singing_retract_count++;
 				timeout_singing_timer = 0;
 				PCF8574_output_status_next |= MOTOR_TELESCOPIC_ARM_DIR__CCW;
-				motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS + 5;
+				motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_EIGHTH_STEPS + 5;
 				motor_telescopic_arms_timer = 0;	
 				if(timeout_singing_retract_count < 24){
 					motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD;
@@ -744,7 +744,7 @@ static esp_err_t pan_at_timeout_singing(void){
 			if(timeout_singing_timer >= TIMEOUT_SINGING__ARMS_EXTEND_PERIOD){
 				timeout_singing_timer = 0;
 				PCF8574_output_status_next &= ~MOTOR_TELESCOPIC_ARM_DIR__CCW;
-				motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_STEPS;
+				motor_telescopic_arms_steps_remain = CONFIG_MOTOR_TELESCOPIC_ARMS_RETRACT_EIGHTH_STEPS;
 				motor_telescopic_arms_timer = 0;
 				if(timeout_singing_retract_count < 16){
 					motor_telescopic_arms_half_period = MOTOR_TELESCOPIC_ARMS_CONST_HALF_PERIOD * 5;								
