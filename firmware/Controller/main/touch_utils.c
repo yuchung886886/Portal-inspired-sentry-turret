@@ -28,7 +28,6 @@ static const char *TAG = "touch";
 #define XPT2046_CMD__GET_Z2 0xC1
 #define XPT2046_CMD__GET_X 0x91
 #define XPT2046_CMD__GET_Y 0xD1
-#define XPT2046_Z_THRESHOLD	3800
 
 #define STORAGE_NAMESPACE "storage"
 
@@ -45,6 +44,7 @@ typedef struct {
 } touch_context_t;
 touch_context_t* touch_handle;
 
+#define Z_THRESHOLD_OFFSET	400
 typedef struct {
 	float a;
 	float b;
@@ -52,9 +52,10 @@ typedef struct {
 	float d;
 	float e;
 	float f;
+	uint16_t z_threshold;
 } touch_calibration_coef_t;
 // default touch calibration coefficient, it is not calibrated.
-touch_calibration_coef_t touch_cal_coef = {0}; 
+touch_calibration_coef_t touch_cal_coef = {0};
 
 static void touch_calibration_task(void *pvParameter);
 
@@ -157,8 +158,8 @@ esp_err_t touch_utils_init(void){
 	nvs_get_blob(nvs_handle, "touch_cal_coef", &touch_cal_coef, &touch_cal_coef_size);
 	nvs_close(nvs_handle);
 	
-	ESP_LOGI(TAG, "nvs get touch_cal_coef: a = %.6f, b = %.6f, c = %.6f, d = %.6f,e = %.6f, f = %.6f", 
-				  touch_cal_coef.a, touch_cal_coef.b, touch_cal_coef.c, touch_cal_coef.d, touch_cal_coef.e, touch_cal_coef.f);		
+	ESP_LOGI(TAG, "nvs get touch_cal_coef: a = %.6f, b = %.6f, c = %.6f, d = %.6f,e = %.6f, f = %.6f, z_threshold = %d", 
+				  touch_cal_coef.a, touch_cal_coef.b, touch_cal_coef.c, touch_cal_coef.d, touch_cal_coef.e, touch_cal_coef.f, touch_cal_coef.z_threshold);		
 	
 	return ESP_OK;
 }
@@ -173,7 +174,7 @@ bool touch_is_pressed(uint16_t* z){
 	XPT2046_Z2 = ((SPI_RX_Data_Buf[0] & 0x7F) << 5) | (SPI_RX_Data_Buf[1] >> 3);
 	
 	if(z){*z = XPT2046_Z2 - XPT2046_Z1;}	
-	if((XPT2046_Z2 - XPT2046_Z1) < XPT2046_Z_THRESHOLD){return true;}
+	if((XPT2046_Z2 - XPT2046_Z1) < touch_cal_coef.z_threshold){return true;}
 	else{return false;}
 }
 
@@ -203,8 +204,8 @@ esp_err_t touch_get_coordinate(uint16_t* x, uint16_t* y){
 	}
 }
 
-void touch_calibration_task_init(void){
-	xTaskCreatePinnedToCore(touch_calibration_task, "touch_calibration_task", 4096, NULL, TASK_PRIORITY__TOUCH, NULL, TASK_CPU_CORE__TOUCH);
+void touch_calibration_task_init(uint16_t* z_threshold){
+	xTaskCreatePinnedToCore(touch_calibration_task, "touch_calibration_task", 4096, z_threshold, TASK_PRIORITY__TOUCH, NULL, TASK_CPU_CORE__TOUCH);
 }
 
 #define CALIBRATION_OFFSET		20
@@ -219,7 +220,8 @@ static void touch_calibration_task(void *pvParameter){
 												   CALIBRATION_OFFSET,
 												   LCD_V_RES - CALIBRATION_OFFSET};
 	uint16_t xpt2046_meas_x[CALIBRATION_POINT_MAX] = {0};
-	uint16_t xpt2046_meas_y[CALIBRATION_POINT_MAX] = {0};	
+	uint16_t xpt2046_meas_y[CALIBRATION_POINT_MAX] = {0};
+	uint16_t xpt2046_meas_z_max = 0, xpt2046_meas_z_tmp = 0;
 	float divisor;	
 	
 	uint8_t touch_hold_count = 0;
@@ -233,11 +235,19 @@ static void touch_calibration_task(void *pvParameter){
 	lcd_evt.id = FLUSH_WITH_BITMAP;
 	if(xQueueSend(lcd_event_queue, &lcd_evt, 0) != pdTRUE){
 		ESP_LOGE(TAG, "Pushing FLUSH_WITH_BITMAP to lcd_event_queue fail");
-	}		
+	}	
+
+	touch_cal_coef.z_threshold = *((uint16_t*)pvParameter) - Z_THRESHOLD_OFFSET;
+	ESP_LOGI(TAG, "Set z_threshold = %d", touch_cal_coef.z_threshold);
 	
 	while(calibration_state < CALIBRATION_DONE){
 		if(touch_hold_count < 20){
-			if(touch_is_pressed(NULL) == true){touch_hold_count++;}
+			if(touch_is_pressed(&xpt2046_meas_z_tmp) == true){
+				if(xpt2046_meas_z_tmp > xpt2046_meas_z_max){
+					xpt2046_meas_z_max = xpt2046_meas_z_tmp;
+				}
+				touch_hold_count++;
+			}
 			else{touch_hold_count = 0;}
 		}else if(touch_hold_count == 20){			
 			touch_get_raw(&xpt2046_meas_x[calibration_state], &xpt2046_meas_y[calibration_state]);
@@ -296,13 +306,14 @@ static void touch_calibration_task(void *pvParameter){
 	touch_cal_coef.f = ((float)cal_coord_y[0] * ((float)xpt2046_meas_y[1] * (float)xpt2046_meas_x[2] - (float)xpt2046_meas_x[1] * (float)xpt2046_meas_y[2])
 						+ (float)xpt2046_meas_x[0] * ((float)cal_coord_y[1] * (float)xpt2046_meas_y[2] - (float)cal_coord_y[2] * (float)xpt2046_meas_y[1])
 						+ (float)xpt2046_meas_y[0] * ((float)cal_coord_y[2] * (float)xpt2046_meas_x[1] - (float)cal_coord_y[1] * (float)xpt2046_meas_x[2])) / divisor;
+	touch_cal_coef.z_threshold = xpt2046_meas_z_max + Z_THRESHOLD_OFFSET;
 	
 	ESP_ERROR_CHECK(nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &nvs_handle));	
 	ESP_ERROR_CHECK(nvs_set_blob(nvs_handle, "touch_cal_coef", &touch_cal_coef, sizeof(touch_calibration_coef_t)));
 	ESP_ERROR_CHECK(nvs_commit(nvs_handle));
 	nvs_close(nvs_handle);
-	ESP_LOGI(TAG, "nvs_set: a = %.6f, b = %.6f, c = %.6f, d = %.6f,e = %.6f, f = %.6f", 
-				  touch_cal_coef.a, touch_cal_coef.b, touch_cal_coef.c, touch_cal_coef.d, touch_cal_coef.e, touch_cal_coef.f);	
+	ESP_LOGI(TAG, "nvs_set: a = %.6f, b = %.6f, c = %.6f, d = %.6f,e = %.6f, f = %.6f, z_threshold = %d", 
+				  touch_cal_coef.a, touch_cal_coef.b, touch_cal_coef.c, touch_cal_coef.d, touch_cal_coef.e, touch_cal_coef.f, touch_cal_coef.z_threshold);	
 				  
 	vTaskResume(remote_ctrl_task_handle);
 	vTaskDelete(NULL);

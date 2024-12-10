@@ -19,6 +19,7 @@ void app_main(void)
 {
     gpio_config_t io_conf = {};	
 	uint8_t boot_btn_hold_count = 0;
+	uint16_t z_threshold = 0; // for touch calibration task to reset the pressing thresshold of the touch panel.
 	
     io_conf.intr_type = GPIO_INTR_DISABLE;
     io_conf.mode = GPIO_MODE_INPUT;
@@ -43,13 +44,14 @@ void app_main(void)
 	ESP_ERROR_CHECK(remote_ctrl_init());	
 	
 	while(1){
-		if(remote_ctrl_state == REMOTE_CTRL_STATE__LISTENING){					
-			if(!gpio_get_level(BOOT_BTN_PIN_NUM)){						
+		if(remote_ctrl_state == REMOTE_CTRL_STATE__LISTENING){	
+			if(!gpio_get_level(BOOT_BTN_PIN_NUM)){
 				if(boot_btn_hold_count < 3){
 					if(++boot_btn_hold_count == 3){
 						ESP_LOGI(TAG, "Suspend remote_ctrl_task and initiate touch calibration.");
 						vTaskSuspend(remote_ctrl_task_handle);
-						touch_calibration_task_init();
+						touch_is_pressed(&z_threshold); // Get the current z_threshold as the thresshold of touch_is_pressed.
+						touch_calibration_task_init(&z_threshold);
 					}
 				}
 			}else{

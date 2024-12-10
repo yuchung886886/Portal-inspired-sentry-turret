@@ -2,7 +2,7 @@
 #define TOUCH_UTILS_H
 
 esp_err_t touch_utils_init(void);
-void touch_calibration_task_init(void);
+void touch_calibration_task_init(uint16_t* z_threshold);
 
 bool touch_is_pressed(uint16_t* z);
 esp_err_t touch_get_raw(uint16_t* x, uint16_t* y);
